@@ -89,6 +89,30 @@ class AccessKeyIdNotFound(Exception):
 class SignatureDoesNotMatch(Exception):
     pass
 
+class NoIPv6AddressError(Exception):
+    """自定义异常：无IPv6地址"""
+    pass
+
+def getIPv6():
+    url = "https://6.ipw.cn"
+
+    try:
+        # 发送 HTTP GET 请求
+        with urllib.request.urlopen(url) as response:
+            # 读取响应内容并解码为字符串
+            ipv6_address = response.read().decode('utf-8').strip()
+
+            # 检查是否返回了有效的 IPv6 地址
+            if ipv6_address:
+                return ipv6_address
+            else:
+                raise NoIPv6AddressError("No IPv6 address found.")
+
+    except urllib.error.URLError as e:
+        raise NoIPv6AddressError(f"Network error occurred: {e}")
+
+    except Exception as e:
+        raise NoIPv6AddressError(f"An unexpected error occurred: {e}")
 
 def parse_args():
     parser = argparse.ArgumentParser(sys.argv[0])
@@ -179,15 +203,28 @@ class DNSPodUpdater():
 
     def execute(self, full_domain, ip):
         domain, sub_domain = self._query_domain(full_domain)
-        record_id, value = self._query_record(domain, sub_domain)
+        try:
+            ipv6_address = getIPv6()
+            print(f"IPv6 address is: {ipv6_address}")
+            record_id, value = self._query_record(domain, sub_domain, 'AAAA')
+            if record_id is not None:
+                if value != ipv6_address:
+                    self._modify_ip_v6(domain, record_id, sub_domain, ipv6_address)
+        except NoIPv6AddressError as e:
+            print(f"Error: {e}")
+
+        record_id, value = self._query_record(domain, sub_domain, 'A')
         if record_id is not None:
             if value != ip:
                 self._modify_ip(domain, record_id, sub_domain, ip)
+
                 return "good"
             else:
                 return "nochg"
         else:
             return "nohost"
+
+
 
     def _query_domain(self, full_domain):
         domain_list = self.api_sender.send({
@@ -212,12 +249,12 @@ class DNSPodUpdater():
 
         raise DomainNotFoundError(full_domain)
 
-    def _query_record(self, domain, sub_domain):
+    def _query_record(self, domain, sub_domain, type):
         record_list = self.api_sender.send({
             'Action': 'DescribeDomainRecords',
             'DomainName': domain,
             'RRKeyWord': sub_domain,
-            'Type': 'A'
+            'Type': type
         })
 
         if 'Record' not in record_list['DomainRecords']:
@@ -236,6 +273,16 @@ class DNSPodUpdater():
             'RecordId': record_id,
             'RR': sub_domain,
             'Type': 'A',
+            'Value': ip
+        })
+
+    def _modify_ip_v6(self, domain, record_id, sub_domain, ip):
+        self.api_sender.send({
+            'Action': 'UpdateDomainRecord',
+            'domain': domain,
+            'RecordId': record_id,
+            'RR': sub_domain,
+            'Type': 'AAAA',
             'Value': ip
         })
 
