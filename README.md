@@ -21,7 +21,7 @@
 ###### 开发前的配置要求
 
 1. 开启群晖SSH，并登录切换到root账号
-2. 一个阿里云域名，需要提前创建好子域名：aaa.xxxx.com
+2. 一个阿里云域名，需要提前创建好子域名：aaa.xxxx.com 记录类型A；需要更新IPv6功能，还需要创建aaa.xxxx.com 记录类型AAAA
 3. 阿里云控制台配置访问控制账号(AccessKey&AccessSecret)
 
 ###### **安装步骤**
