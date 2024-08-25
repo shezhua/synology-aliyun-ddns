@@ -205,19 +205,17 @@ class DNSPodUpdater():
         domain, sub_domain = self._query_domain(full_domain)
         try:
             ipv6_address = getIPv6()
-            print(f"IPv6 address is: {ipv6_address}")
             record_id, value = self._query_record(domain, sub_domain, 'AAAA')
             if record_id is not None:
                 if value != ipv6_address:
                     self._modify_ip_v6(domain, record_id, sub_domain, ipv6_address)
-        except NoIPv6AddressError as e:
-            print(f"Error: {e}")
+        except NoIPv6AddressError:
+            pass
 
         record_id, value = self._query_record(domain, sub_domain, 'A')
         if record_id is not None:
             if value != ip:
                 self._modify_ip(domain, record_id, sub_domain, ip)
-
                 return "good"
             else:
                 return "nochg"
